@@ -1,0 +1,10 @@
+services:
+  app:
+    build: .
+    container_name: mis-html-excel-service
+    ports:
+      - "8000:8000"
+    restart: unless-stopped
+    environment:
+      - PORT=8000
+    # No volume mounts needed — zero storage requirement!

@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{ title | default("MIS HTML to Excel") }}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', path='css/style.css') }}">
+</head>
+<body>
+
+  <div class="container">
+    <header>
+      <div class="badge-pill">
+        <span class="dot"></span>
+        Zero Server Storage Cost &bull; 100% In-Memory Streaming
+      </div>
+      <h1>{{ title | default("MIS HTML to Excel") }}</h1>
+      <p class="subtitle">Upload your constant Base Report (HTML 1) and any number of Comparison HTML reports (e.g. <code>teamData.htm</code>, <code>dvnDor.html</code> <code>xyz.html</code>). All data is matched in RAM and downloaded as a multi-sheet styled Excel workbook.</p>
+    </header>
+
+    <div id="errorBox" class="error-alert"></div>
+
+    <div class="glass-card">
+      <form id="uploadForm">
+        
+        <!-- SECTION 1: Constant Base Report (HTML 1) -->
+        <div class="section-block">
+          <div class="section-title">
+            <span class="step-num">1</span>
+            <div>
+              <h3>Constant Base Report (HTML 1)</h3>
+              <p class="section-desc">Upload your Master file source here</p>
+            </div>
+          </div>
+
+          <div class="dropzone" id="dzBase">
+            <input type="file" id="fileBase" name="file1" accept=".htm,.html" required>
+            <div class="drop-icon">
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="12" y1="18" x2="12" y2="12"></line><line x1="9" y1="15" x2="15" y2="15"></line></svg>
+            </div>
+            <div class="drop-title">Select or Drop Base HTML Report</div>
+            <div class="drop-desc">Upload here</div>
+            <div class="file-badge" id="nameBase"></div>
+          </div>
+        </div>
+
+        <!-- SECTION 2: Dynamic Comparison Reports -->
+        <div class="section-block">
+          <div class="section-header-row">
+            <div class="section-title">
+              <span class="step-num">2</span>
+              <div>
+                <h3>Comparison Reports (VLOOKUP Targets)</h3>
+                <p class="section-desc">Add one or multiple HTML reports to compare against Base (e.g. <code>teamData.htm</code>, <code>dvnDor.html</code> <code>xyz.html</code>) </p>
+              </div>
+            </div>
+
+            <button type="button" id="btnAddFile" class="btn-secondary">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+              Add Comparison File
+            </button>
+          </div>
+
+          <!-- Dynamic Comparison Dropzone List -->
+          <div id="comparisonList" class="comparison-grid"></div>
+        </div>
+
+        <!-- Options: Table Index & Column Indices -->
+        <div class="options-container">
+          <div class="options-container-header">
+            <h4>Lookup & Column Detection Settings</h4>
+            <small>Position of data table and how lookup columns are identified</small>
+          </div>
+
+          <!-- Mode Toggle: Auto-Detect vs Custom Index -->
+          <div class="mode-selector-row">
+            <span class="mode-label">Lookup Columns Mode:</span>
+            <div class="mode-toggles">
+              <label class="mode-radio">
+                <input type="radio" name="col_mode" value="auto" checked id="modeAuto">
+                <span class="radio-pill">✨ Auto-Detect by Column Name (Recommended)</span>
+              </label>
+              <label class="mode-radio">
+                <input type="radio" name="col_mode" value="custom" id="modeCustom">
+                <span class="radio-pill">⚙️ Custom Column Position / Index</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="options-grid">
+            <div class="option-item">
+              <label for="tableIndex">
+                <span class="option-title">HTML Table Index</span>
+                <span class="option-sub">Position of &lt;table&gt; tag in file</span>
+              </label>
+              <input type="number" id="tableIndex" class="options-input" value="{{ default_table_index | default(4) }}" min="0" max="30">
+            </div>
+
+            <div class="option-item" id="nopColWrapper">
+              <label for="nopColIndex">
+                <span class="option-title">Total Column</span>
+                <span class="option-sub" id="nopSubText">Auto-detects </span>
+              </label>
+              <input type="number" id="nopColIndex" class="options-input auto-mode" placeholder="Auto" min="0" max="50" disabled>
+            </div>
+
+            <div class="option-item" id="premColWrapper">
+              <label for="premColIndex">
+                <span class="option-title">Total Column</span>
+                <span class="option-sub" id="premSubText">Auto-detects </span>
+              </label>
+              <input type="number" id="premColIndex" class="options-input auto-mode" placeholder="Auto" min="0" max="50" disabled>
+            </div>
+
+            <div class="option-item output-name-item">
+              <label for="outputFilename">
+                <span class="option-title">Output File Name Prefix</span>
+                <span class="option-sub">Date is dynamically appended</span>
+              </label>
+              <div class="filename-input-group">
+                <input type="text" id="outputFilename" class="options-text-input" value="report_" placeholder="report_">
+                <span class="date-tag-preview" id="dateTagPreview">_YYYY-MM-DD.xlsx</span>
+              </div>
+            </div>
+
+            <div class="option-item heading-item">
+              <label for="reportHeading">
+                <span class="option-title">Merged Sheet Heading</span>
+                <span class="option-sub">Merged dynamically across all columns</span>
+              </label>
+              <div class="heading-input-group">
+                <input type="text" id="reportHeading" class="options-text-input" value="RESULTS FOR THE DATA" placeholder="e.g. RESULTS FOR THE DATA">
+              </div>
+            </div>
+          </div>
+
+          <!-- Index Base Switcher (Excel 1-based vs Python 0-based) -->
+          <div id="indexBaseRow" class="index-base-bar" style="display: none;">
+            <div class="index-base-left">
+              <span class="base-legend-title">Index Style:</span>
+              <label class="sub-toggle">
+                <input type="radio" name="index_base_toggle" value="1" checked id="base1Radio">
+                <span>Excel Style (1-based: Col 1 = 1st column)</span>
+              </label>
+              <label class="sub-toggle">
+                <input type="radio" name="index_base_toggle" value="0" id="base0Radio">
+                <span>Python Style (0-based: Col 0 = 1st column)</span>
+              </label>
+            </div>
+            <button type="button" id="btnApplyDefaults" class="btn-text-action">Reset to Standard</button>
+          </div>
+
+          <!-- Dynamic Informative Tip -->
+          <div class="options-tip" id="optionsTip">
+            ✨ <strong>No index guessing required!</strong> In <strong>Auto-Detect</strong> mode, the system automatically finds by header name across any 2nd, 3rd, or Nth HTML file.<br>
+            If you ever need to manually set columns, switch to <strong>Custom Column Position</strong> (In Excel, 1st column is <code>1</code>; in Python, 1st column is <code>0</code>).
+          </div>
+        </div>
+
+        <!-- Submit Button -->
+        <button type="submit" id="submitBtn" class="btn-submit">
+          <div class="spinner" id="btnSpinner"></div>
+          <span id="btnText">Convert & Download Excel</span>
+          <svg id="btnIcon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+        </button>
+
+      </form>
+    </div>
+
+    <!-- Live Execution Summary & Breakdown -->
+    <div id="resultsCard" class="glass-card results-card">
+      <div class="results-header">
+        <div>
+          <div class="results-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>
+            Processed Successfully & Downloaded
+          </div>
+          <div class="downloaded-file-pill" id="downloadedFileBadge">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+            <span id="downloadedFileName">report_.xlsx</span>
+          </div>
+        </div>
+        <span style="font-size:0.8rem; color:#64748b; font-family:'JetBrains Mono';">0 bytes written to disk</span>
+      </div>
+
+      <div class="stats-grid">
+        <div class="stat-box">
+          <div class="stat-val" id="resTotalAgents">0</div>
+          <div class="stat-lbl">Total Agents (Base)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" style="color:#34d399;" id="resMatched">0</div>
+          <div class="stat-lbl">Matched (Any File)</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" style="color:#f59e0b;" id="resUnmatched">0</div>
+          <div class="stat-lbl">Not Matched</div>
+        </div>
+        <div class="stat-box">
+          <div class="stat-val" style="color:#60a5fa;" id="resFilesCount">0</div>
+          <div class="stat-lbl">Comparison Files</div>
+        </div>
+      </div>
+
+      <!-- Per-File Breakdown Details -->
+      <div id="breakdownSection" class="breakdown-container">
+        <div class="breakdown-heading">Comparison Files Breakdown</div>
+        <div id="breakdownList" class="breakdown-list"></div>
+      </div>
+    </div>
+
+
+   
+ 
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', path='js/app.js') }}"></script>
+</body>
+</html>
