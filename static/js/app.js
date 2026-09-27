@@ -28,6 +28,118 @@ document.addEventListener('DOMContentLoaded', () => {
   const dateTagPreview = document.getElementById('dateTagPreview');
   const downloadedFileName = document.getElementById('downloadedFileName');
 
+  // Dynamic Footer Year
+  const currentYearSpan = document.getElementById('currentYear');
+  if (currentYearSpan) {
+    currentYearSpan.textContent = new Date().getFullYear();
+  }
+
+  // Progress Bar & Stage Tracker Elements
+  const progressContainer = document.getElementById('progressContainer');
+  const progressBar = document.getElementById('progressBar');
+  const progressStatusText = document.getElementById('progressStatusText');
+  const progressPercent = document.getElementById('progressPercent');
+  const stageSteps = [
+    document.getElementById('stageStep1'),
+    document.getElementById('stageStep2'),
+    document.getElementById('stageStep3'),
+    document.getElementById('stageStep4'),
+    document.getElementById('stageStep5')
+  ];
+
+  class ProgressTracker {
+    constructor() {
+      this.timer = null;
+      this.currentPercent = 0;
+    }
+
+    start(totalFiles) {
+      if (!progressContainer) return;
+      this.reset();
+      progressContainer.style.display = 'block';
+      this.setStage(1, `Uploading Base + ${totalFiles} Comparison report(s) to cloud...`, 15);
+
+      let elapsed = 0;
+      this.timer = setInterval(() => {
+        elapsed += 200;
+
+        if (elapsed >= 300 && elapsed < 900) {
+          this.setStage(2, `Parsing HTML tables & finding column headers...`, Math.min(25 + (elapsed / 25), 45));
+        } else if (elapsed >= 900 && elapsed < 2000) {
+          this.setStage(3, `Cross-matching Agent codes across all files (VLOOKUP in RAM)...`, Math.min(48 + (elapsed / 45), 72));
+        } else if (elapsed >= 2000 && elapsed < 3500) {
+          this.setStage(4, `Generating Excel workbook with styled headers & merged banner...`, Math.min(74 + (elapsed / 90), 92));
+        } else if (elapsed >= 3500) {
+          this.setStage(4, `Finalizing in-memory Excel file streaming from cloud server...`, Math.min(this.currentPercent + 0.3, 95));
+        }
+      }, 200);
+    }
+
+    setStage(stageNum, text, targetPercent) {
+      if (text && progressStatusText) progressStatusText.textContent = text;
+      this.currentPercent = Math.max(this.currentPercent, Math.round(targetPercent));
+      if (progressBar) progressBar.style.width = `${this.currentPercent}%`;
+      if (progressPercent) progressPercent.textContent = `${this.currentPercent}%`;
+
+      stageSteps.forEach((step, idx) => {
+        if (!step) return;
+        const currentStageIndex = stageNum - 1;
+        if (idx < currentStageIndex) {
+          step.className = 'stage-step completed';
+        } else if (idx === currentStageIndex) {
+          step.className = 'stage-step active';
+        } else {
+          step.className = 'stage-step';
+        }
+      });
+    }
+
+    complete(callback) {
+      clearInterval(this.timer);
+      this.setStage(5, `✨ Excel workbook generated! Triggering browser download...`, 100);
+      stageSteps.forEach(step => { if (step) step.className = 'stage-step completed'; });
+      if (progressBar) {
+        progressBar.style.background = 'linear-gradient(90deg, #10b981, #34d399)';
+      }
+
+      setTimeout(() => {
+        if (progressContainer) {
+          progressContainer.style.display = 'none';
+        }
+        if (callback) callback();
+      }, 600);
+    }
+
+    error(errMessage) {
+      clearInterval(this.timer);
+      if (progressStatusText) progressStatusText.textContent = `Processing failed: ${errMessage}`;
+      if (progressBar) {
+        progressBar.style.background = '#ef4444';
+        progressBar.style.width = '100%';
+      }
+      if (progressPercent) {
+        progressPercent.textContent = 'Failed';
+        progressPercent.style.color = '#ef4444';
+      }
+    }
+
+    reset() {
+      clearInterval(this.timer);
+      this.currentPercent = 0;
+      if (progressBar) {
+        progressBar.style.width = '0%';
+        progressBar.style.background = 'linear-gradient(90deg, #3b82f6, #06b6d4, #10b981)';
+      }
+      if (progressPercent) {
+        progressPercent.textContent = '0%';
+        progressPercent.style.color = '#60a5fa';
+      }
+      stageSteps.forEach(step => { if (step) step.className = 'stage-step'; });
+    }
+  }
+
+  const tracker = new ProgressTracker();
+
   // Format today's date (YYYY-MM-DD)
   const now = new Date();
   const yyyy = now.getFullYear();
@@ -421,11 +533,16 @@ document.addEventListener('DOMContentLoaded', () => {
       return;
     }
 
-    // UI Loading state
+    // UI Loading state & Progress Tracker
     submitBtn.disabled = true;
     btnSpinner.style.display = 'block';
     btnIcon.style.display = 'none';
     btnText.textContent = `Processing 1 Base + ${activeComparisonFiles.length} Comparison files in RAM...`;
+
+    errorBox.style.display = 'none';
+    resultsCard.style.display = 'none';
+    breakdownList.innerHTML = '';
+    tracker.start(activeComparisonFiles.length);
 
     const formData = new FormData();
     formData.append('file1', baseFile);
@@ -550,9 +667,12 @@ document.addEventListener('DOMContentLoaded', () => {
         // Non-critical
       }
 
-      resultsCard.style.display = 'block';
+      tracker.complete(() => {
+        resultsCard.style.display = 'block';
+      });
 
     } catch (err) {
+      tracker.error(err.message);
       errorBox.textContent = err.message;
       errorBox.style.display = 'block';
     } finally {

@@ -1,4 +1,5 @@
 import os
+import datetime
 from pathlib import Path
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse
@@ -46,7 +47,8 @@ async def index_page(request: Request):
             "title": "MIS HTML to Excel Studio",
             "default_table_index": 4,
             "default_nop_col_index": 7,
-            "default_prem_col_index": 9
+            "default_prem_col_index": 9,
+            "current_year": datetime.date.today().year
         }
     )
 
